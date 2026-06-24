@@ -1,30 +1,54 @@
-// ジェスチャーの種類
-// 👍(Thumb_Up), 👎(Thumb_Down), ✌️(Victory), 
-// ☝️(Pointng_Up), ✊(Closed_Fist), 👋(Open_Palm), 
-// 🤟(ILoveYou)
-function getCode(left_gesture, right_gesture) {
-  let code_array = {
-    "Thumb_Up": 1,
-    "Thumb_Down": 2,
-    "Victory": 3,
-    "Pointing_Up": 4,
-    "Closed_Fist": 5,
-    "Open_Palm": 6,
+// 左手: 1本=1, 2本=2, 3本=3, 4本=4, 5本=5
+// 右手: 1本=1, 2本=2, 3本=3, 4本=4, 5本=5, 0本=6
+const fingerMap = {
+  "one-left": 1, "two-left": 2, "three-left": 3, "four-left": 4, "five-left": 5,
+  "one-right": 1, "two-right": 2, "three-right": 3, "four-right": 4, "five-right": 5, "six-right": 6
+};
+// 文字→コードの逆引き
+const charToCode = {
+  "a": "11", "b": "12", "c": "13", "d": "14", "e": "15", "f": "16",
+  "g": "21", "h": "22", "i": "23", "j": "24", "k": "25", "l": "26",
+  "m": "31", "n": "32", "o": "33", "p": "34", "q": "35", "r": "36",
+  "s": "41", "t": "42", "u": "43", "v": "44", "w": "45", "x": "46",
+  "y": "51", "z": "52",
+  " ": "SP", // スペース
+};
+function updateHint() {
+  const input = document.querySelector('input');
+  const target = sample_texts[0] || "";
+  const nextIndex = input.value.length;
+  const nextChar = target[nextIndex];
+  const hintElem = document.querySelector('#hint');
+  if (hintElem && nextChar !== undefined) {
+    const code = charToCode[nextChar] || "?";
+    hintElem.innerText = "Next: " + code;
+  } else if (hintElem) {
+    hintElem.innerText = "";
   }
-  let left_code = code_array[left_gesture];
-  let right_code = code_array[right_gesture];
-  // left_codeとright_codeを文字として結合
+}
+
+function getCode(left_gesture, right_gesture) {
+  if (left_gesture === "back-left" && right_gesture === "back-right") {
+    return "backspace";
+  }
+  if (left_gesture === "back-left" && right_gesture === "six-right") {
+    return "space";
+  }
+  let left_code = fingerMap[left_gesture];
+  let right_code = fingerMap[right_gesture];
   let code = String(left_code) + String(right_code);
   return code;
 }
 
 function getCharacter(code) {
+  if (code === "backspace") return "backspace";
+  if (code === "space") return " "; 
   const codeToChar = {
     "11": "a", "12": "b", "13": "c", "14": "d", "15": "e", "16": "f",
     "21": "g", "22": "h", "23": "i", "24": "j", "25": "k", "26": "l",
     "31": "m", "32": "n", "33": "o", "34": "p", "35": "q", "36": "r",
     "41": "s", "42": "t", "43": "u", "44": "v", "45": "w", "46": "x",
-    "51": "y", "52": "z", "53": " ", "54": "backspace"
+    "51": "y", "52": "z"
   };
   return codeToChar[code] || "";
 }
@@ -53,6 +77,14 @@ let p5canvas = null;
 function setup() {
   p5canvas = createCanvas(320, 240);
   p5canvas.parent('#canvas');
+  // ヒント表示用の要素を作成
+const hintDiv = document.createElement('div');
+      hintDiv.id = 'hint';
+      hintDiv.style.fontSize = '2em';
+      hintDiv.style.fontWeight = 'bold';
+      hintDiv.style.textAlign = 'center';
+      hintDiv.style.marginTop = '10px';
+      document.querySelector('#canvas').after(hintDiv);
 
   // When gestures are found, the following function is called. The detection results are stored in results.
   let lastChar = "";
@@ -93,6 +125,7 @@ function setup() {
         lastCharTime = now;
       }
     }
+    updateHint();
 
   }
 }
@@ -187,7 +220,10 @@ function startWebcam() {
 function draw() {
   background(127);
   if (cam) {
-    image(cam, 0, 0, width, height);
+  push();
+  scale(-1, 1);
+  image(cam, -width, 0, width, height);
+  pop();
   }
   // 各頂点座標を表示する
   // 各頂点座標の位置と番号の対応は以下のURLを確認
@@ -198,7 +234,7 @@ function draw() {
         for (let landmark of landmarks) {
           noStroke();
           fill(100, 150, 210);
-          circle(landmark.x * width, landmark.y * height, 10);
+          circle(width - landmark.x * width, landmark.y * height, 10);
         }
       }
     }
@@ -212,7 +248,7 @@ function draw() {
       let score = gestures_results.gestures[i][0].score;
       let right_or_left = gestures_results.handednesses[i][0].hand;
       let pos = {
-        x: gestures_results.landmarks[i][0].x * width,
+        x: width - gestures_results.landmarks[i][0].x * width,
         y: gestures_results.landmarks[i][0].y * height,
       };
       textSize(20);
